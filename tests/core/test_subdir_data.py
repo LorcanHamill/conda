@@ -213,6 +213,41 @@ def test_use_only_tar_bz2():
         assert precs[0].fn.endswith(".conda")
 
 
+def test_metadata_cache_works():
+    channel = Channel(join(dirname(__file__), "..", "data", "conda_format_repo", context.subdir))
+    SubdirData.clear_cached_local_channel_data()
+
+    with patch('conda.core.subdir_data.fetch_repodata_remote_request',
+               wraps=fetch_repodata_remote_request) as fetcher:
+        sd_a = SubdirData(channel)
+        precs_a = tuple(sd_a.query("zlib"))
+        assert fetcher.call_count == 1
+
+        sd_b = SubdirData(channel)
+        assert sd_b is sd_a
+        precs_b = tuple(sd_b.query("zlib"))
+        assert fetcher.call_count == 1
+
+
+def test_metadata_cache_clearing():
+    channel = Channel(join(dirname(__file__), "..", "data", "conda_format_repo", context.subdir))
+    SubdirData.clear_cached_local_channel_data()
+
+    with patch('conda.core.subdir_data.fetch_repodata_remote_request',
+               wraps=fetch_repodata_remote_request) as fetcher:
+        sd_a = SubdirData(channel)
+        precs_a = tuple(sd_a.query("zlib"))
+        assert fetcher.call_count == 1
+
+        SubdirData.clear_cached_local_channel_data()
+
+        sd_b = SubdirData(channel)
+        assert sd_b is not sd_a
+        precs_b = tuple(sd_b.query("zlib"))
+        assert fetcher.call_count == 2
+        assert precs_b == precs_a
+
+
 # @pytest.mark.integration
 # class SubdirDataTests(TestCase):
 #
