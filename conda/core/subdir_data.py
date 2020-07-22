@@ -14,7 +14,7 @@ from io import open as io_open
 import json
 from logging import DEBUG, getLogger
 from mmap import ACCESS_READ, mmap
-from os.path import dirname, isdir, join, splitext
+from os.path import dirname, isdir, join, splitext, exists
 import re
 from time import time
 import warnings
@@ -62,11 +62,19 @@ class SubdirDataType(type):
         assert channel.subdir
         assert not channel.package_filename
         assert type(channel) is Channel
+        now = time()
         cache_key = channel.url(with_credentials=True), repodata_fn
         if cache_key in SubdirData._cache_:
-            return SubdirData._cache_[cache_key]
-
+            cache_entry = SubdirData._cache_[cache_key]
+            if cache_key[0].startswith('file://'):
+                file_path = cache_key[0][6:] + '/' + repodata_fn
+                if exists(file_path):
+                    if cache_entry._mtime > getmtime(file_path):
+                        return cache_entry
+            else:
+                return cache_entry
         subdir_data_instance = super(SubdirDataType, cls).__call__(channel, repodata_fn)
+        subdir_data_instance._mtime = now
         SubdirData._cache_[cache_key] = subdir_data_instance
         return subdir_data_instance
 
